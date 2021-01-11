@@ -1,0 +1,15 @@
+---
+
+- name: Clone Spack
+  git:
+    repo: https://github.com/spack/spack.git
+    dest: /mnt/shared/spack
+    version: v0.16.0
+    depth: 1
+
+- name: Change Spack ownership
+  file:
+    path: /mnt/shared/spack
+    owner: citc
+    group: citc
+    recurse: yes

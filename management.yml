@@ -45,6 +45,7 @@
     - users
     - mysql
     - slurm
+    - spack
     - packer
   tasks:
     - name: copy SSH public keys to slurm account
