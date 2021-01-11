@@ -8,7 +8,7 @@
 - name: Extract EFA installer
   unarchive:
     src: /tmp/aws-efa-installer-1.11.1.tar.gz
-    dest: /tmp/aws-efa-installer
+    dest: /tmp/
     remote_src: yes
 
 # Unfortunately, EFA kernel modules aren't available for CentOS on ARM
