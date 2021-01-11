@@ -1,0 +1,30 @@
+---
+
+- name: Spack config compiler
+  command: /mnt/shared/spack/bin/spack compiler find --scope=system
+
+- name: Spack config externals
+  command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
+  when:
+    ansible_local.citc.csp != "aws"
+
+- name: Spack config externals (aws)
+  command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
+  environment:
+    PATH: "/opt/amazon/openmpi/bin:{{ ansible_env.PATH }}"
+  when:
+    ansible_local.citc.csp == "aws"
+
+- name: Spack mark GCC as buildable
+  command: /mnt/shared/spack/bin/spack config --scope system add packages:gcc:buildable:true
+
+- name: Spack mark cmake as buildable
+  command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
+
+- name: Add Spack to default shells
+  copy:
+    src: 99-spack.sh
+    dest: /etc/profile.d/99-spack.sh
+    owner: root
+    mode: u=rwx,g=rx,o=rx
+    force: no

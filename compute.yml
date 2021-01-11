@@ -16,6 +16,8 @@
     - sssd
     - lmod
     - packages
+    - devtoolset
     - mpi
+    - spack_compute
     - slurm
     - monitoring

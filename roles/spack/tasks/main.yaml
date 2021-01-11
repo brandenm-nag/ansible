@@ -1,0 +1,18 @@
+---
+
+- name: Create Spack Directory
+  file:
+    path: /mnt/shared/spack
+    owner: citc
+    group: citc
+    state: directory
+    mode: 0775
+
+- name: Clone Spack
+  git:
+    repo: https://github.com/spack/spack.git
+    dest: /mnt/shared/spack
+    version: v0.16.0
+    depth: 1
+  become_user: citc
+

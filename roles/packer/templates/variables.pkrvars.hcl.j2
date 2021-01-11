@@ -4,7 +4,7 @@ destination_image_name = "citc-slurm-compute"
 
 aws_arch = "x86_64"
 aws_region = "{%- if startnode_config.region is defined -%}{{ startnode_config.region }}{%- endif -%}"
-aws_instance_type = "t2.nano"
+aws_instance_type = "t3.medium"
 
 google_destination_image_family = "citc-slurm-compute"
 google_network = "{%- if startnode_config.network_name is defined -%}{{ startnode_config.network_name }}{%- endif -%}"

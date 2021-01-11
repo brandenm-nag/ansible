@@ -1,5 +1,18 @@
 ---
 
+- name: Install Development Tools
+  yum:
+    name: "@Development Tools"
+    state: present
+
 - name: install gcc-toolset
   package:
     name: gcc-toolset-9
+
+- name: install gfortran
+  package:
+    name: gcc-gfortran
+
+- name: install cmake
+  package:
+    name: cmake
