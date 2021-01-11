@@ -2,11 +2,9 @@
 
 - name: Spack config compiler
   command: /mnt/shared/spack/bin/spack compiler find --scope=system
-  become_user: citc
 
 - name: Spack config externals
   command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
-  become_user: citc
   when:
     ansible_local.citc.csp != "aws"
 
@@ -14,17 +12,14 @@
   command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
   environment:
     path: /opt/amazon/openmpi/bin:{{ ansible_env.PATH }}
-  become_user: citc
   when:
     ansible_local.citc.csp == "aws"
 
 - name: Spack mark GCC as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:gcc:buildable:true
-  become_user: citc
 
 - name: Spack mark cmake as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
-  become_user: citc
 
 - name: Add Spack to default shells
   copy:
