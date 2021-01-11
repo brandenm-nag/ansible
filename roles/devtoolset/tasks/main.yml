@@ -2,7 +2,7 @@
 
 - name: Install Development Tools
   yum:
-    name: “@development”
+    name: "@Development Tools"
     state: present
 
 - name: install gcc-toolset
