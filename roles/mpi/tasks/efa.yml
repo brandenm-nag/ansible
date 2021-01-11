@@ -15,7 +15,7 @@
 # Avoid installing the kernel modules there.
 - name: Run EFA installer
   command: ./efa_installer.sh -y {{ "-k" if ansible_architecture == "aarch64" }}
-  archs:
+  args:
     chdir: /tmp/aws-efa-installer
 
 - name: Adjust ptrace scope
