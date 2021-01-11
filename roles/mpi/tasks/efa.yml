@@ -1,0 +1,26 @@
+---
+
+- name: Download EFA installer
+  get_url:
+    url: https://efa-installer.amazonaws.com/aws-efa-installer-1.11.1.tar.gz
+    dest: /tmp/aws-efa-installer-1.11.1.tar.gz
+
+- name: Extract EFA installer
+  unarchive:
+    src: /tmp/aws-efa-installer-1.11.1.tar.gz
+    dest: /tmp/aws-efa-installer
+    remote_src: yes
+
+# Unfortunately, EFA kernel modules aren't available for CentOS on ARM
+# Avoid installing the kernel modules there.
+- name: Run EFA installer
+  command: ./efa_installer.sh -y {{ "-k" if ansible_architecture == "aarch64" }}
+  archs:
+    chdir: /tmp/aws-efa-installer
+
+- name: Adjust ptrace scope
+  copy:
+    src: 10-ptrace.conf
+    dest: /etc/sysctl.d/10-ptrace.conf
+    owner: root
+    force: no
