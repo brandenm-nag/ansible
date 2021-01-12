@@ -16,15 +16,6 @@ elif [[ "$1" == "gpu" ]]; then
         -only="*.{{ ansible_local.citc.csp }}-gpu" \
         /etc/citc/packer/
 {% endif %}
-{% if ansible_local.citc.csp == "aws" %}
-elif [[ "$1" == "aarch64" ]]; then
-    /usr/local/bin/packer build \
-        -var-file /etc/citc/packer/variables.pkrvars.hcl \
-        -only="*.{{ ansible_local.citc.csp }}" \
-        -var 'aws_arch="arm64"' \
-        -var 'aws_instance_type="t4g.medium"' \
-        /etc/citc/packer/
-{% endif %}
 else
     echo "No match found for ${1}"
     exit 1
