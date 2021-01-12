@@ -19,3 +19,11 @@
 - name: Init Spack DB
   command: /mnt/shared/spack/bin/spack reindex
   become_user: citc
+
+- name: Create Benchmark Dataset Directory
+  file:
+    path: /mnt/shared/benchmarks
+    owner: citc
+    group: citc
+    state: directory
+    mode: 0775
