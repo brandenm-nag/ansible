@@ -71,3 +71,4 @@
     - sos
     - debug_tools
     - lmod
+    - instance_limits

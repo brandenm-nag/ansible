@@ -1,0 +1,26 @@
+---
+
+- name: Install AWS limits.yaml
+  copy:
+    src: aws.limts.yaml
+    dest: /home/citc/limits.yaml
+    owner: citc
+    group: citc
+  when:
+    ansible_local.citc.csp == "aws"
+
+
+- name: Install GCP limits.yaml
+  copy:
+    src: gcp.limts.yaml
+    dest: /home/citc/limits.yaml
+    owner: citc
+    group: citc
+  when:
+    ansible_local.citc.csp == "google"
+
+- name: Update Slurm for Limits
+  command: /usr/local/bin/finish
+  args:
+    chdir: /home/citc
+  become_user: citc
