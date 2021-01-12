@@ -124,7 +124,7 @@ source "oracle-oci" "oracle-gpu" {
 build {
 
     source "amazon-ebs.aws" {
-        instance_type = t3.medium
+        instance_type = "t3.medium"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
@@ -135,7 +135,7 @@ build {
         }
     }
     source "amazon-ebs.aws" {
-        instance_type = t4g.medium
+        instance_type = "t4g.medium"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
