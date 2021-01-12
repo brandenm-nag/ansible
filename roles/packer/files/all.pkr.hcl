@@ -45,7 +45,6 @@ source "googlecompute" "google" {
 }
 
 source "amazon-ebs" "aws" {
-    ami_name = "${var.destination_image_name}-${var.cluster}-v{{timestamp}}"
     run_volume_tags = {
         cluster = var.cluster
     }
@@ -61,15 +60,6 @@ source "amazon-ebs" "aws" {
     force_deregister = true
     force_delete_snapshot = true
     region = var.aws_region
-    #instance_type = var.aws_instance_type
-    #source_ami_filter {
-    #    filters = {
-    #        name = "CentOS 8.*"
-    #        architecture = var.aws_arch
-    #    }
-    #    owners = ["125523088429"]
-    #    most_recent = true
-    #}
     ssh_username = "centos"
     vpc_filter {
         filter {
@@ -124,6 +114,7 @@ source "oracle-oci" "oracle-gpu" {
 build {
 
     source "amazon-ebs.aws" {
+        ami_name = "${var.destination_image_name}-${var.cluster}-x86_64-v{{timestamp}}"
         instance_type = "t3.medium"
         source_ami_filter {
             filters = {
@@ -135,6 +126,7 @@ build {
         }
     }
     source "amazon-ebs.aws" {
+        ami_name = "${var.destination_image_name}-${var.cluster}-aarch64-v{{timestamp}}"
         instance_type = "t4g.medium"
         source_ami_filter {
             filters = {

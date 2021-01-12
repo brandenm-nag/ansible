@@ -16,3 +16,6 @@
     depth: 1
   become_user: citc
 
+- name: Init Spack DB
+  command: /mnt/shared/spack/bin/spack reindex
+  become_user: citc
