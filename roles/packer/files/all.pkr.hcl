@@ -7,8 +7,8 @@ variable "google_network" {}
 variable "google_subnetwork" {}
 
 variable "aws_region" {}
-variable "aws_instance_type" {}
-variable "aws_arch" {}
+#variable "aws_instance_type" {}
+#variable "aws_arch" {}
 
 variable "oracle_availability_domain" {}
 variable "oracle_base_image_ocid" {}
@@ -45,7 +45,6 @@ source "googlecompute" "google" {
 }
 
 source "amazon-ebs" "aws" {
-    ami_name = "${var.destination_image_name}-${var.cluster}-v{{timestamp}}"
     run_volume_tags = {
         cluster = var.cluster
     }
@@ -61,15 +60,6 @@ source "amazon-ebs" "aws" {
     force_deregister = true
     force_delete_snapshot = true
     region = var.aws_region
-    instance_type = var.aws_instance_type
-    source_ami_filter {
-        filters = {
-            name = "CentOS 8.*"
-            architecture = var.aws_arch
-        }
-        owners = ["125523088429"]
-        most_recent = true
-    }
     ssh_username = "centos"
     vpc_filter {
         filter {
@@ -122,6 +112,33 @@ source "oracle-oci" "oracle-gpu" {
 }
 
 build {
+
+    source "amazon-ebs.aws" {
+        ami_name = "${var.destination_image_name}-${var.cluster}-x86_64-v{{timestamp}}"
+        instance_type = "t3.medium"
+        source_ami_filter {
+            filters = {
+                name = "CentOS 8.*"
+                architecture = "x86_64"
+            }
+            owners = ["125523088429"]
+            most_recent = true
+        }
+    }
+    source "amazon-ebs.aws" {
+        ami_name = "${var.destination_image_name}-${var.cluster}-aarch64-v{{timestamp}}"
+        instance_type = "t4g.medium"
+        source_ami_filter {
+            filters = {
+                name = "CentOS 8.*"
+                architecture = "arm64"
+            }
+            owners = ["125523088429"]
+            most_recent = true
+        }
+    }
+
+
     sources = [
         "source.googlecompute.google",
         "source.amazon-ebs.aws",
