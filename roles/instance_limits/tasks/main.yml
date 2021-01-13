@@ -2,7 +2,7 @@
 
 - name: Install AWS limits.yaml
   copy:
-    src: aws.limts.yaml
+    src: aws.limits.yaml
     dest: /home/citc/limits.yaml
     owner: citc
     group: citc
@@ -12,7 +12,7 @@
 
 - name: Install GCP limits.yaml
   copy:
-    src: gcp.limts.yaml
+    src: gcp.limits.yaml
     dest: /home/citc/limits.yaml
     owner: citc
     group: citc
