@@ -7,8 +7,6 @@ variable "google_network" {}
 variable "google_subnetwork" {}
 
 variable "aws_region" {}
-#variable "aws_instance_type" {}
-#variable "aws_arch" {}
 
 variable "oracle_availability_domain" {}
 variable "oracle_base_image_ocid" {}
@@ -113,7 +111,7 @@ source "oracle-oci" "oracle-gpu" {
 
 build {
 
-    source "amazon-ebs.aws" {
+    source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-x86_64-v{{timestamp}}"
         instance_type = "t3.medium"
         source_ami_filter {
@@ -125,7 +123,7 @@ build {
             most_recent = true
         }
     }
-    source "amazon-ebs.aws" {
+    source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-aarch64-v{{timestamp}}"
         instance_type = "t4g.medium"
         source_ami_filter {
@@ -141,7 +139,6 @@ build {
 
     sources = [
         "source.googlecompute.google",
-        "source.amazon-ebs.aws",
         "source.oracle-oci.oracle",
         "source.oracle-oci.oracle-gpu",
     ]
