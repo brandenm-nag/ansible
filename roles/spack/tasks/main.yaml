@@ -27,3 +27,12 @@
     group: citc
     state: directory
     mode: 0775
+
+- name: Add Spack to default shells
+  copy:
+    dest: /etc/profile.d/99-spack.sh
+    content: |
+      . /mnt/shared/spack/share/spack/setup-env.sh
+    owner: root
+    mode: u=rwx,g=rx,o=rx
+    force: no
