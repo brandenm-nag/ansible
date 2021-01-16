@@ -97,14 +97,6 @@ def create_node_config(client, hostname: str, nodespace: Dict[str, str], ssh_key
                 "Groups": [nodespace["compute_security_group"]],
             },
         ],
-        "BlockDeviceMappings": [
-            {
-                "DeviceName": "/dev/sda1",
-                "Ebs": {
-                    "DeleteOnTermination": True,
-                },
-            },
-        ],
     }
 
     return config
