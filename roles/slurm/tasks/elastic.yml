@@ -3,7 +3,7 @@
   pip:
     name:
       - PyYAML
-      - https://github.com/clusterinthecloud/python-citc/releases/download/0.3.10/citc-0.3.10-py3-none-any.whl
+      - git+https://github.com/brandenm-nag/python-citc.git@c398_master
     virtualenv: /opt/cloud_sdk
     virtualenv_command: "{{ python_venv }}"
   register: cloud_sdk_venv
