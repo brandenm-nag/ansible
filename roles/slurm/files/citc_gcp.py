@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import asyncio
 
-__all__ = ["get_nodespace", "start_node"]
+__all__ = ["get_nodespace", "start_node", "start_nodes"]
 
 
 def load_yaml(filename: str) -> dict:
@@ -200,6 +200,13 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     return instance
 
 
+async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    await asyncio.gather(*(
+        start_node( log, host, nodespace, ssh_keys)
+        for host in hosts
+    ))
+
+
 def terminate_instance(log, hosts, nodespace=None):
     gce_compute = get_build()
 
@@ -223,7 +230,6 @@ def terminate_instance(log, hosts, nodespace=None):
             continue
 
     log.info(f" Stopped {host}")
-
 
 # [START run]
 async def do_create_instance():

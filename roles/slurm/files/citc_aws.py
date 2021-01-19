@@ -1,14 +1,66 @@
 import functools
 import subprocess
 from typing import Dict, Optional
+from collections import defaultdict
 import yaml
-import asyncio
+import asyncio, time
 
 import boto3
 import citc.aws
 import citc.cloud
 import citc.utils
 #from mypy_boto3 import ec2, route53
+
+def create_placement_group(client, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}',
+    res = client.create_placement_group(
+            GroupName=name,
+            Strategy='cluster',
+            TagSpecifications=[
+                {
+                    'ResourceType': 'placement-group',
+                    'Tags': [
+                        {
+                            'Key': 'cluster',
+                            'Value': nodespace["cluster_id"]
+                        },
+                        {
+                            'Key': 'shape',
+                            'Value': shape
+                        }
+                    ]
+                }
+            ])
+    return name
+
+
+def delete_placement_group(client, shape, nodespace):
+    res = client.delete_placement_group(
+            GroupName=f'pg-{nodespace["cluster_id"]}-{shape}')
+
+
+def get_placement_group(client, shape, nodespace):
+    groups = client.describe_placement_groups(
+                    Filters=[
+                        {
+                            'Name': 'tag:cluster',
+                            'Values': [nodespace["cluster_id"]]
+                        },
+                        {
+                            'Name': 'tag:shape',
+                            'Values': [shape]
+                        }
+                    ],
+                    GroupName=f'pg-{nodespace["cluster_id"]}-{shape}'
+                    )
+    validPGs = groups["PlacementGroups"]
+    if len validPGs > 0:
+        if validPGs[0]["State"] in ['pending', 'available']:
+            return validPGs[0]["GroupName"]
+
+    return None
+
+
 
 
 def get_node_state(client, hostname: str, nodespace: Dict[str, str]) -> citc.cloud.NodeState:
@@ -222,6 +274,71 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     subprocess.run(["scontrol", "update", f"NodeName={host}", f"NodeAddr={vm_ip}"])
 
     log.info(f" Started {host}")
+
+async def start_node_group(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    region = nodespace["region"]
+    client = ec2_client(region)
+    if len(hosts) == 1:
+        await start_node(log, hosts[0], nodespace, ssh_keys)
+        return
+
+    log.info(f"Starting {len(hosts)} hosts in a group")
+
+    instance_details = create_node_config(client, hosts[0], nodespace, ssh_keys)
+    features = get_node_features(hosts[0])
+    
+
+    instance_details["MaxCount"] = len(hosts)
+    instance_details["MinCount"] = len(hosts)
+    # Remove the 'Name' tag - will assign later
+    del instance_details["TagSpecifications"][0]["Tags"][0]
+    if features["cluster_group"]:
+        PG = get_placement_group(client, features["shape"], nodespace)
+        if not PG:
+            PG = create_placement_group(client, features["shape"], nodespace)
+        instance_details["Placement"] = { 'GroupName' : PG }
+
+    loop = asyncio.get_event_loop()
+    try:
+        start_instance = functools.partial(client.run_instances, **instance_details)
+        instance_result = await loop.run_in_executor(None, start_instance)
+        instances = instance_result["Instances"]
+    except Exception as e:
+        log.error(f" problem launching instances: {e}")
+        return
+
+    r53_client = route53_client()
+    for host, instance in zip(hosts, instances):
+        client.create_tags(Resources=[instance["InstanceId"]], Tags=[{'Key': 'Name', 'Value': host}])
+        vm_ip = instance["PrivateIpAddress"]
+        fqdn = f"{host}.{nodespace['dns_zone']}"
+        add_dns_record(r53_client, nodespace["dns_zone_id"], fqdn, "A", vm_ip, 300)
+        subprocess.run(["scontrol", "update", f"NodeName={host}", f"NodeAddr={vm_ip}"])
+        log.info(f" Started {host}")
+
+
+async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    region = nodespace["region"]
+    client = ec2_client(region)
+
+    # Wait for nodes terminating
+    for host in hosts:
+        while get_node_state(client, host, nodespace) in [citc.cloud.NodeState.TERMINATING, citc.cloud.NodeState.STOPPING]:
+            log.info(" host is currently being deleted. Waiting...")
+            await asyncio.sleep(5)
+
+    # Filter out nodes that are in bringup or running already
+    hosts = [h for h in hosts if get_node_state(client, h, nodespace) not in [citc.cloud.NodeState.PENDING, citc.cloud.NodeState.RUNNING]]
+
+    # Group nodes based off of shape
+    groups = defaultdict([])
+    for host in hosts:
+        shape = get_node_features(host)["shape"]
+        groups[shape].append(host)
+    await asyncio.gather(*(
+        start_node_group(log, group, nodespace, ssh_keys)
+        for group in groups.values()
+    ))
 
 
 def terminate_instance(log, hosts, nodespace=None):

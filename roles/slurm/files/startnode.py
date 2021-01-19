@@ -27,10 +27,8 @@ async def main() -> None:
 
     hosts = subprocess.run(["scontrol", "show", "hostnames", sys.argv[1]], stdout=subprocess.PIPE).stdout.decode().split()
 
-    await asyncio.gather(*(
-        citc_cloud.start_node( log, host, nodespace, ssh_keys)
-        for host in hosts
-    ))
+    await citc_cloud.start_nodes(log, hosts, nodespace, ssh_keys)
+
 
 sys.excepthook = handle_exception
 
