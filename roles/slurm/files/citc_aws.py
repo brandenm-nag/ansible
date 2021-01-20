@@ -12,7 +12,7 @@ import citc.utils
 #from mypy_boto3 import ec2, route53
 
 def create_placement_group(client, shape, nodespace):
-    name=f'pg-{nodespace["cluster_id"]}-{shape}',
+    name=f'pg-{nodespace["cluster_id"]}-{shape}'
     res = client.create_placement_group(
             GroupName=name,
             Strategy='cluster',
@@ -50,11 +50,10 @@ def get_placement_group(client, shape, nodespace):
                             'Name': 'tag:shape',
                             'Values': [shape]
                         }
-                    ],
-                    GroupName=f'pg-{nodespace["cluster_id"]}-{shape}'
+                    ]
                     )
     validPGs = groups["PlacementGroups"]
-    if len validPGs > 0:
+    if len(validPGs) > 0:
         if validPGs[0]["State"] in ['pending', 'available']:
             return validPGs[0]["GroupName"]
 
@@ -292,7 +291,7 @@ async def start_node_group(log, hosts, nodespace: Dict[str, str], ssh_keys: str)
     instance_details["MinCount"] = len(hosts)
     # Remove the 'Name' tag - will assign later
     del instance_details["TagSpecifications"][0]["Tags"][0]
-    if features["cluster_group"]:
+    if features["pg"] == 'True':
         PG = get_placement_group(client, features["shape"], nodespace)
         if not PG:
             PG = create_placement_group(client, features["shape"], nodespace)
@@ -331,7 +330,7 @@ async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> N
     hosts = [h for h in hosts if get_node_state(client, h, nodespace) not in [citc.cloud.NodeState.PENDING, citc.cloud.NodeState.RUNNING]]
 
     # Group nodes based off of shape
-    groups = defaultdict([])
+    groups = defaultdict(lambda: [])
     for host in hosts:
         shape = get_node_features(host)["shape"]
         groups[shape].append(host)
