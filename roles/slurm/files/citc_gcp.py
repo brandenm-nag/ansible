@@ -30,7 +30,7 @@ def create_placement_group(gce_compute, shape, nodespace):
     name=f'pg-{nodespace["cluster_id"]}-{shape}'
     result = gce_compute.resourcePolicies().insert(
                 region=nodespace["region"],
-                project=nodespace["project"],
+                project=nodespace["compartment_id"],
                 body={
                     'name': name,
                     'groupPlacementPolicy': {
@@ -43,12 +43,12 @@ def create_placement_group(gce_compute, shape, nodespace):
     return result['targetLink'] if 'targetLink' in result else None
 
     
-def get_placement_group(client, shape, nodespace):
+def get_placement_group(gce_compute, shape, nodespace):
     name=f'pg-{nodespace["cluster_id"]}-{shape}'
     result = gce_compute.resourcePolicies().list(
                 region=nodespace["region"],
-                project=nodespace["project"],
-                name=name).execute()
+                project=nodespace["compartment_id"],
+                filter=f'name={name}').execute()
     return result['items'][0]['selfLink'] if 'items' in result else None
 
 
@@ -156,12 +156,12 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
         config['minCpuPlatform'] = 'Intel Skylake'
 
     if features["pg"] == 'True':
-        PG = get_placement_group(gce_compute, features, nodespace)
+        PG = get_placement_group(gce_compute, features["shape"], nodespace)
         if not PG:
             PG = create_placement_group(gce_compute, features["shape"], nodespace)
-        instance_details["resourcePolicies"] = [ PG[""] ]
+        config["resourcePolicies"] = [ PG ]
         # Required when using compact placement
-        instance_details["scheduling"] = {
+        config["scheduling"] = {
             "onHostMaintenance": "TERMINATE",
             "automaticRestart": False
         }
