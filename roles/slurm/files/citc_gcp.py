@@ -26,6 +26,33 @@ def get_nodespace(file="/etc/citc/startnode.yaml") -> Dict[str, str]:
     return load_yaml(file)
 
 
+def create_placement_group(gce_compute, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}'
+    result = gce_compute.resourcePolicies().insert(
+                region=nodespace["region"],
+                project=nodespace["project"],
+                body={
+                    'name': name,
+                    'groupPlacementPolicy': {
+                        # Max size, via doc: 
+                        # https://cloud.google.com/compute/docs/instances/define-instance-placement#restrictions
+                        "vmCount": 22,
+                        "collocation": "COLLOCATED"
+                    }
+                }).execute()
+    return result['targetLink'] if 'targetLink' in result else None
+
+    
+def get_placement_group(client, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}'
+    result = gce_compute.resourcePolicies().list(
+                region=nodespace["region"],
+                project=nodespace["project"],
+                name=name).execute()
+    return result['items'][0]['selfLink'] if 'items' in result else None
+
+
+
 def get_node(gce_compute, log, compartment_id: str, zone: str, hostname: str, cluster_id: str) -> Dict:
     filter_clause = f"name={hostname} AND labels.cluster={cluster_id}"
 
@@ -56,18 +83,22 @@ def get_ip_for_vm(gce_compute, log, compartment_id: str, zone: str, hostname: st
     ip = network['networkIP']
     return ip
 
+def get_node_features(hostname):
+    features = subprocess.run(
+        ["sinfo", "--Format=features:200", "--noheader", f"--nodes={hostname}"],
+        stdout=subprocess.PIPE
+    ).stdout.decode().strip().split(',')
+    features = {f.split("=")[0]: f.split("=")[1] for f in features}
+    return features
 
-def get_shape(hostname):
-    features = subprocess.run(["sinfo", "--Format=features:200", "--noheader", f"--nodes={hostname}"], stdout=subprocess.PIPE).stdout.decode().split(',')
-    shape = [f for f in features if f.startswith("shape=")][0].split("=")[1].strip()
-    return shape
 
 
 def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace: Dict[str, str], ssh_keys: str):
     """
     Create the configuration needed to create ``hostname`` in ``nodespace`` with ``ssh_keys``
     """
-    shape = get_shape(hostname)
+    features = get_node_features(hostname)
+    shape = features["shape"]
     subnet = nodespace["subnet"]
     zone = nodespace["zone"]
     image_family = f'citc-slurm-compute-{nodespace["cluster_id"]}'
@@ -123,6 +154,18 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     # the correct one (if set)
     if machine_type.startswith('n1-') or machine_type.startswith('e2-'):
         config['minCpuPlatform'] = 'Intel Skylake'
+
+    if features["pg"] == 'True':
+        PG = get_placement_group(gce_compute, features, nodespace)
+        if not PG:
+            PG = create_placement_group(gce_compute, features["shape"], nodespace)
+        instance_details["resourcePolicies"] = [ PG[""] ]
+        # Required when using compact placement
+        instance_details["scheduling"] = {
+            "onHostMaintenance": "TERMINATE",
+            "automaticRestart": False
+        }
+
 
     return config
 
