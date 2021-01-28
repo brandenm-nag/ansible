@@ -18,6 +18,6 @@
     - packages
     - devtoolset
     - mpi
-    - spack_compute
     - slurm
+    - spack_compute
     - monitoring
