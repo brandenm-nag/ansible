@@ -21,6 +21,20 @@
 - name: Spack mark cmake as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
 
+- name: Build GCC 10
+  command: /mnt/shared/spack/bin/spack install gcc@10.2.0 +binutils arch={{ ansible_architecture }}
+  become_user: citc
+
+- name: Find GCC 10
+  command: /mnt/shared/spack/bin/spack location -i gcc@10.2.0 arch={{ ansible_architecture }}
+  register: spack_gcc10_dir
+
+- name: Register new GCC with Spack
+  command: /mnt/shared/spack/bin/spack compiler find {{ spack_gcc10_dir }}
+
+- name:  Default new GCC
+  command: /mnt/shared/spack/bin/spack config --scope system add "packages:all:compiler:[gcc@10.2.0 arch={{ansible_architecture}}]"
+
 - name: Add Spack to default shells
   copy:
     dest: /etc/profile.d/99-spack.sh

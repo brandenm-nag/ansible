@@ -24,9 +24,7 @@ mpi_packages:
   oracle:
     - openmpi-devel
     - mpich-devel
-  google:
-    - openmpi-devel
-    - mpich-devel
+  google: []
   aws: []
 
 monitoring_role: master
