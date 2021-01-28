@@ -34,6 +34,7 @@ source "googlecompute" "google" {
     tags = ["compute-${var.cluster}"]
     image_name = "${var.destination_image_name}-${var.cluster}-v{{timestamp}}"
     image_family = "${var.google_destination_image_family}-${var.cluster}"
+    machine_type = "n1-standard-16"
     labels = {
         cluster = var.cluster
     }
@@ -114,7 +115,7 @@ build {
 
     source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-x86_64-v{{timestamp}}"
-        instance_type = "t3.medium"
+        instance_type = "m5.4xlarge"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
@@ -126,7 +127,7 @@ build {
     }
     source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-aarch64-v{{timestamp}}"
-        instance_type = "t4g.medium"
+        instance_type = "m6g.4xlarge"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
