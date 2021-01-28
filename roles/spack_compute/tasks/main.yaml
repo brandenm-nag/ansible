@@ -15,8 +15,6 @@
   when:
     ansible_local.citc.csp == "aws"
 
-- name: Spack mark GCC as buildable
-  command: /mnt/shared/spack/bin/spack config --scope system add packages:gcc:buildable:true
 
 - name: Spack mark cmake as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
@@ -35,6 +33,11 @@
     state: absent
 
 
+# Temporarily enable GCC as "buildable"
+- name: Spack mark GCC as buildable
+  command: /mnt/shared/spack/bin/spack config add packages:gcc:buildable:true
+  become_user: citc
+
 - name: Build GCC 10
   command: /mnt/shared/spack/bin/spack install gcc@10.2.0 +binutils arch={{ ansible_architecture }}
   become_user: citc
@@ -44,17 +47,61 @@
   register: spack_gcc10_dir
 
 - name: Register new GCC with Spack
-  command: /mnt/shared/spack/bin/spack compiler find --scope system {{ spack_gcc10_dir }}
+  command: /mnt/shared/spack/bin/spack compiler find --scope system {{ spack_gcc10_dir.stdout }}
 
 - name:  Default new GCC
   command: /mnt/shared/spack/bin/spack config --scope system add "packages:all:compiler:[gcc@10.2.0 arch={{ansible_architecture}}]"
 
-# Stuff for GCP - Build our own MPI (AWS uses EFA)
+- name: Spack remove mark GCC as buildable
+  command: /mnt/shared/spack/bin/spack config remove packages:gcc:buildable:true
+  become_user: citc
+#
+# Stuff for GCP - Build our own MPI (AWS uses EFA-provided OpenMPI)
 - name: Build OpenMPI (GCP)
   command: /mnt/shared/spack/bin/spack install openmpi +pmi schedulers=slurm +legacylaunchers fabrics=auto arch={{ansible_architecture}}
   become_user: citc
   when:
     ansible_local.citc.csp == "google"
+
+- name: Find OpenMPI location
+  command: /mnt/shared/spack/bin/spack location -i openmpi%gcc@10.2.0 arch={{ ansible_architecture }}
+  register: spack_ompi_dir
+  when:
+    ansible_local.citc.csp == "google"
+
+- name: Find OpenMPI spec
+  command: /mnt/shared/spack/bin/spack find --format="{name}@{version}%{compiler.name}@{compiler.version} arch={arch.target}" openmpi%gcc@10.2.0 arch={{ ansible_architecture }}
+  register: spack_ompi_spec
+  when:
+    ansible_local.citc.csp == "google"
+
+
+- name: Register OpenMPI with Spack
+  copy:
+    content: |
+      packages:
+        mpi:
+          buildable: false
+        openmpi:
+          externals:
+          - spec: {{spack_ompi_spec.stdout}}
+            prefix: {{spack_ompi_dir.stdout}}
+          buildable: false
+    dest: /tmp/ompi.yaml
+  when:
+     ansible_local.citc.csp == "google"
+ 
+- name: Spack note OpenMPI - import
+  command: /mnt/shared/spack/bin/spack config --scope system add -f /tmp/ompi.yaml
+  when:
+     ansible_local.citc.csp == "google"
+
+- name: Spack note OpenMPI - delete
+  file:
+    path: /tmp/ompi.yaml
+    state: absent
+  when:
+     ansible_local.citc.csp == "google"
 
 
 
