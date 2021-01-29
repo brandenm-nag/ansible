@@ -1,6 +1,7 @@
 ---
 slurm_packages:
   - slurmd
+  - devel
   - libpmi
 
 slurm_role: compute
@@ -11,9 +12,7 @@ mpi_packages:
   oracle:
     - mpich
     - openmpi
-  google:
-    - mpich
-    - openmpi
+  google: []
   aws: []
 
 monitoring_role: client

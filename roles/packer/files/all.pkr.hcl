@@ -34,6 +34,7 @@ source "googlecompute" "google" {
     tags = ["compute-${var.cluster}"]
     image_name = "${var.destination_image_name}-${var.cluster}-v{{timestamp}}"
     image_family = "${var.google_destination_image_family}-${var.cluster}"
+    machine_type = "n1-standard-16"
     labels = {
         cluster = var.cluster
     }
