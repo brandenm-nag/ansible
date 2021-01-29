@@ -1,20 +1,36 @@
 ---
 
+- name: Verify Kernel package installed
+  package:
+    name: kernel-devel
+
 - name: Download EFA installer
   get_url:
-    url: https://efa-installer.amazonaws.com/aws-efa-installer-1.11.1.tar.gz
-    dest: /tmp/aws-efa-installer-1.11.1.tar.gz
+    url: https://efa-installer.amazonaws.com/aws-efa-installer-latest.tar.gz
+    dest: /tmp/aws-efa-installer-latest.tar.gz
 
 - name: Extract EFA installer
   unarchive:
-    src: /tmp/aws-efa-installer-1.11.1.tar.gz
+    src: /tmp/aws-efa-installer-latest.tar.gz
     dest: /tmp/
     remote_src: yes
 
-# Unfortunately, EFA kernel modules aren't available for CentOS on ARM
-# Avoid installing the kernel modules there.
 - name: Run EFA installer
-  command: ./efa_installer.sh -y {{ "-k" if ansible_architecture == "aarch64"  else "" }}
+  # Unfortunately, EFA kernel modules aren't available for CentOS on ARM
+  # Avoid installing the kernel modules there.
+  #command: ./efa_installer.sh -y {{ "-k" if ansible_architecture == "aarch64"  else "" }}
+  #
+  # For now, let's just avoid the kernel module all together. The compute nodes aren't yet
+  # being created with EFA adapters enabled.
+  # At issue:
+  #   CentOS repos do not keep around out-of-date RPMs, and the base AMI might
+  #   not have the most recent CentOS kernel running when it first boots up
+  #   (before updates have been applied).  This becomes a problem when the EFA
+  #   installer attempts to build the driver, as yum will not be able to
+  #   install the kernel devel package for the currently running kernel.
+  #   The solution would be to do a 'yum upgrade' and reboot the node before
+  #   running this ansible task.
+  command: ./efa_installer.sh -y -k
   args:
     chdir: /tmp/aws-efa-installer
 
