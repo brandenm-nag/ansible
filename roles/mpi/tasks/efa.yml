@@ -1,9 +1,5 @@
 ---
 
-- name: Verify Kernel package installed
-  package:
-    name: kernel-devel
-
 - name: Download EFA installer
   get_url:
     url: https://efa-installer.amazonaws.com/aws-efa-installer-latest.tar.gz

@@ -11,13 +11,47 @@
   when:
     ansible_local.citc.csp != "aws"
 
-- name: Spack config externals (aws)
-  command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
-  environment:
-    PATH: "/opt/amazon/openmpi/bin:{{ ansible_env.PATH }}"
+#- name: Spack config externals (aws)
+#  command: /mnt/shared/spack/bin/spack external find --scope=system --not-buildable
+#  environment:
+#    PATH: "/opt/amazon/openmpi/bin:{{ ansible_env.PATH }}"
+#  when:
+#    ansible_local.citc.csp == "aws"
+
+
+
+# spack config add packages:libfabric:externals:/opt/amazon/efa/
+- name: Detect Libfabric version
+  shell: "/opt/amazon/efa/bin/fi_info --version | awk '/libfabric:/{print $2}'"
+  register: spack_libfabric_version
   when:
     ansible_local.citc.csp == "aws"
 
+- name: Register EFA Libfabric with Spack
+  copy:
+    content: |
+      packages:
+        libfabric:
+          externals:
+          - spec: libfabric@{{spack_libfabric_version.stdout}}
+            prefix: /opt/amazon/efa
+          buildable: false
+    dest: /tmp/libfabric.yaml
+  when:
+     ansible_local.citc.csp == "aws"
+ 
+- name: Spack note EFA Libfabric - import
+  command: /mnt/shared/spack/bin/spack config --scope system add -f /tmp/libfabric.yaml
+  when:
+     ansible_local.citc.csp == "aws"
+
+- name: Spack note EFA Libfabric - delete
+  file:
+    path: /tmp/libfabric.yaml
+    state: absent
+  when:
+     ansible_local.citc.csp == "aws"
+# spack build OpenMPI:  openmpi +pmi schedulers=slurm +legacylaunchers fabrics=ofi arch={{ansible_architecture}}
 
 - name: Spack mark cmake as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
@@ -59,24 +93,21 @@
 #  command: /mnt/shared/spack/bin/spack config remove packages:gcc:buildable:true
 #  become_user: citc
 #
-# Stuff for GCP - Build our own MPI (AWS uses EFA-provided OpenMPI)
+
+# Build our own MPI (AWS uses EFA-provided libfabric)
+
+
 - name: Build OpenMPI (GCP)
-  command: /mnt/shared/spack/bin/spack install openmpi +pmi schedulers=slurm +legacylaunchers fabrics=auto arch={{ansible_architecture}}
+  command: /mnt/shared/spack/bin/spack install openmpi +pmi schedulers=slurm +legacylaunchers fabrics={{"ofi" if ansible_local.citc.csp == "aws" else "auto"}} arch={{ansible_architecture}}
   become_user: citc
-  when:
-    ansible_local.citc.csp == "google"
 
 - name: Find OpenMPI location
   command: /mnt/shared/spack/bin/spack location -i openmpi arch={{ ansible_architecture }}
   register: spack_ompi_dir
-  when:
-    ansible_local.citc.csp == "google"
 
 - name: Find OpenMPI spec
   command: /mnt/shared/spack/bin/spack find --format="{name}@{version}%{compiler.name}@{compiler.version} arch={arch.target}" openmpi arch={{ ansible_architecture }}
   register: spack_ompi_spec
-  when:
-    ansible_local.citc.csp == "google"
 
 
 - name: Register OpenMPI with Spack
@@ -91,20 +122,14 @@
             prefix: {{spack_ompi_dir.stdout}}
           buildable: false
     dest: /tmp/ompi.yaml
-  when:
-     ansible_local.citc.csp == "google"
  
 - name: Spack note OpenMPI - import
   command: /mnt/shared/spack/bin/spack config --scope system add -f /tmp/ompi.yaml
-  when:
-     ansible_local.citc.csp == "google"
 
 - name: Spack note OpenMPI - delete
   file:
     path: /tmp/ompi.yaml
     state: absent
-  when:
-     ansible_local.citc.csp == "google"
 
 
 

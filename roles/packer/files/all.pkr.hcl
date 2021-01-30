@@ -115,7 +115,7 @@ build {
 
     source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-x86_64-v{{timestamp}}"
-        instance_type = "t3.medium"
+        instance_type = "t3.2xlarge"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
@@ -127,7 +127,7 @@ build {
     }
     source "source.amazon-ebs.aws" {
         ami_name = "${var.destination_image_name}-${var.cluster}-aarch64-v{{timestamp}}"
-        instance_type = "t4g.medium"
+        instance_type = "t4g.2xlarge"
         source_ami_filter {
             filters = {
                 name = "CentOS 8.*"
