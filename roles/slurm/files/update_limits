@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     shapeInfo = shapes[args.shape]
 
-    tasks_per_node = shapeInfo.get("threads_per_core", 1)*shapeInfo["cores_per_socket"]*shapeInfo.get("sockets", 1)
+    tasks_per_node = int(shapeInfo.get("threads_per_core", 1))*int(shapeInfo["cores_per_socket"])*int(shapeInfo.get("sockets", 1))
 
     nodes_needed = int(math.ceil(args.tasks / float(tasks_per_node)))
 
