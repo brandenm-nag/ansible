@@ -66,6 +66,12 @@
     dest: /usr/local/bin/update_config
     mode: 0755
 
+- name: configure update_limits script
+  copy:
+    src: update_limits
+    dest: /usr/local/bin/update_limits
+    mode: 0755
+
 - name: install kill_all_nodes script
   copy:
     src: kill_all_nodes.sh

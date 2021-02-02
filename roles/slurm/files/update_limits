@@ -1,0 +1,48 @@
+#!/opt/cloud_sdk/bin/python
+
+import argparse
+import subprocess
+import yaml
+import math
+
+import citc.utils
+
+
+def get_current_limits():
+    with open('/home/citc/limits.yaml', 'r') as fp:
+        res = yaml.safe_load(fp)
+    return res
+
+def set_limits(limits):
+    with open('/home/citc/limits.yaml', 'w') as fp:
+        for x,v in limits.items():
+            fp.write(f'{x}: {v}\n')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Update limits.yaml')
+    parser.add_argument('--shape', required=True)
+    parser.add_argument('--tasks', type=int, required=True, help="Number of cores needed of this shape (will determine # of nodes)")
+
+    args = parser.parse_args()
+
+    limits = get_current_limits()
+    shapes = citc.utils.get_types_info()
+
+    if args.shape not in shapes:
+        raise Exception("Shape information not found")
+
+    shapeInfo = shapes[args.shape]
+
+    tasks_per_node = shapeInfo.get("threads_per_core", 1)*shapeInfo["cores_per_socket"]*shapeInfo.get("sockets", 1)
+
+    nodes_needed = int(math.ceil(args.tasks / float(tasks_per_node)))
+
+    current = limits.get(args.shape, 0)
+    if current < nodes_needed:
+        limits[args.shape] = nodes_needed
+
+        set_limits(limits)
+        print("Updated limits... updating SLRUM config and restarting...")
+        # This app must be run as root anyway to load cloud credentials
+        subprocess.run(['/usr/local/bin/update_config'])
+        subprocess.run(['systemctl', 'restart', 'slurmctld'])
