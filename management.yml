@@ -81,4 +81,4 @@
       dest: /mnt/shared/update_service_db
       mode: 0755
   - name: Inform Service Node
-    cmd: /mnt/shared/update_service_db clusters --status r
+    command: /mnt/shared/update_service_db clusters --status r
