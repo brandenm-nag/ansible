@@ -74,6 +74,7 @@
     - instance_limits
 
 - name: Update Service Node
+  hosts: management
   tasks:
   - name: Install updater
     copy:
