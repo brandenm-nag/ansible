@@ -72,3 +72,13 @@
     - debug_tools
     - lmod
     - instance_limits
+
+- name: Update Service Node
+  tasks:
+  - name: Install updater
+    copy:
+      src: /tmp/update_service_db
+      dest: /mnt/shared/update_service_db
+      mode: 0755
+  - name: Inform Service Node
+    cmd: /mnt/shared/update_service_db clusters --status r
