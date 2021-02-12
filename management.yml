@@ -103,5 +103,12 @@
       src: /tmp/cluster_control/run_command
       dest: /mnt/shared/sbin/run_command
       mode: 0755
+  - name: Install Python dependencies
+    pip:
+      name:
+        - google-api-python-client
+        - google-cloud-storage
+        - boto3
+      virtualenv:  /opt/cloud_sdk
   - name: Inform Service Node
     command: /mnt/shared/bin/update_service_db cluster --status r
