@@ -76,10 +76,32 @@
 - name: Update Service Node
   hosts: management
   tasks:
-  - name: Install updater
+  - name: Make etc
+    file:
+      path: /mnt/shared/etc
+      state: directory
+  - name: Make bin
+    file:
+      path: /mnt/shared/bin
+      state: directory
+  - name: Make sbin
+    file:
+      path: /mnt/shared/sbin
+      state: directory
+  - name: Install Command and Control Config
     copy:
-      src: /tmp/update_service_db
-      dest: /mnt/shared/update_service_db
+      src: /tmp/cluster_control/cluster_control.json
+      dest: /mnt/shared/etc/cluster_control.json
+      mode: 0444
+  - name: Install Command and Control Updater
+    copy:
+      src: /tmp/cluster_control/update_service_db
+      dest: /mnt/shared/bin/update_service_db
+      mode: 0755
+  - name: Install Command and Control Receiver
+    copy:
+      src: /tmp/cluster_control/run_command
+      dest: /mnt/shared/sbin/run_command
       mode: 0755
   - name: Inform Service Node
-    command: /mnt/shared/update_service_db cluster --status r
+    command: /mnt/shared/bin/update_service_db cluster --status r
