@@ -45,6 +45,7 @@
     - users
     - mysql
     - slurm
+    - proxy
     - spack
     - packer
   tasks:

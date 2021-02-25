@@ -21,3 +21,11 @@
     - slurm
     - spack_compute
     - monitoring
+
+- hosts: compute
+  tasks:
+    - name: Set Proxy
+      lineinfile:
+        state: present
+        path: /etc/environment
+        line: "http_proxy=http://{{ mgmt_hostname }}:3128"

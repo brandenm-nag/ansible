@@ -1,0 +1,23 @@
+---
+
+- name: Install 3Proxy
+  yum:
+    name:
+      - 3proxy
+
+- name: Configure 3Proxy
+  copy:
+    dest: /etc/3proxy.cfg
+    content: |
+      daemon
+      allow * 10.0.0.0/8 * 80 HTTP
+      auth none
+      proxy
+      internal 0.0.0.0
+
+- name: enable 3Proxy
+  service:
+    name: 3proxy
+    state: started
+    enabled: yes
+
