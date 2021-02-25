@@ -25,7 +25,7 @@
 - hosts: compute
   tasks:
     - name: Set Proxy
-      lineinfile:
-        state: present
-        path: /etc/environment
-        line: "http_proxy=http://{{ mgmt_hostname }}:3128"
+      copy:
+        dest: /etc/profile.d/98-proxy.sh
+        content: "export http_proxy=http://{{ mgmt_hostname }}:3128"
+        mode: 0644
