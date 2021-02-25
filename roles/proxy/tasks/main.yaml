@@ -21,3 +21,8 @@
     state: started
     enabled: yes
 
+- name: Set 3Proxy Env var
+  copy:
+    dest: /etc/profile.d/98-proxy.sh
+    content: "export http_proxy=http://{{ mgmt_hostname }}:3128"
+    mode: 0644
