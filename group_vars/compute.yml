@@ -6,7 +6,8 @@ slurm_packages:
 
 slurm_role: compute
 
-install_packages: []
+install_packages:
+  - python3-requests
 
 mpi_packages:
   oracle:
