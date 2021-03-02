@@ -17,6 +17,7 @@ install_packages:
   - xorg-x11-xauth
   - openmpi-devel
   - python3-devel
+  - python3-requests
   - "@Development Tools"
   - vim
 
