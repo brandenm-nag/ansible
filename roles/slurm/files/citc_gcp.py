@@ -186,6 +186,17 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     try:
         inserter = gce_compute.instances().insert(project=project, zone=zone, body=instance_details)
         instance = await loop.run_in_executor(None, inserter.execute)
+        watcher = gce_compute.zoneOperations().get(project=project, zone=zone, operation=instance['name'])
+        while True:
+            r = await loop.run_in_executor(None, watcher.execute)
+            if r['status'] == 'DONE':
+                if r.get('error', None):
+                    err = r['error']['errors'][0]
+                    raise Exception(err['message'])
+                break
+            else:
+                log.info(f"{host}:  Waiting for start operation to complete...")
+                await asyncio.sleep(5)
     except Exception as e:
         log.error(f" problem launching instance: {e}")
         return
