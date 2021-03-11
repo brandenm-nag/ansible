@@ -12,7 +12,7 @@
   git:
     repo: https://github.com/spack/spack.git
     dest: /mnt/shared/spack
-    version: v0.16.0
+    version: v0.16.1
     depth: 1
   become_user: citc
 
