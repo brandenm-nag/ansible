@@ -50,10 +50,15 @@ def get_node_state(gce_compute, log, compartment_id: str, zone: str, hostname: s
 
 def get_ip_for_vm(gce_compute, log, compartment_id: str, zone: str, hostname: str, cluster_id: str) -> str:
     item = get_node(gce_compute, log, compartment_id, zone, hostname, cluster_id)
+    if not item:
+        return None
 
-    network = item['networkInterfaces'][0]
+    nics = item.get('networkInterfaces', [])
+    if not nics:
+        return None
+    network = nics[0]
     log.debug(f'network {network}')
-    ip = network['networkIP']
+    ip = network.get('networkIP', None)
     return ip
 
 
@@ -186,10 +191,11 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
         return
 
     if not slurm_ip:
-        while not get_node(gce_compute, log, project, zone, host, nodespace["cluster_id"])['networkInterfaces'][0].get("networkIP"):
+        vm_ip = get_ip_for_vm(gce_compute, log, project, zone, host, nodespace["cluster_id"])
+        while not vm_ip:
             log.info(f"{host}:  No VNIC attachment yet. Waiting...")
             await asyncio.sleep(5)
-        vm_ip = get_ip_for_vm(gce_compute, log, project, zone, host, nodespace["cluster_id"])
+            vm_ip = get_ip_for_vm(gce_compute, log, project, zone, host, nodespace["cluster_id"])
 
         log.info(f"  Private IP {vm_ip}")
 
