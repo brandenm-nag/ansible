@@ -46,6 +46,9 @@
 - name: Spack mark cmake as buildable
   command: /mnt/shared/spack/bin/spack config --scope system add packages:cmake:buildable:true
 
+- name: Spack mark python as buildable
+  command: /mnt/shared/spack/bin/spack config --scope system add packages:python:buildable:true
+
 - name: Spack note SLURM existence - create
   template:
     src: external_slurm.yaml.j2

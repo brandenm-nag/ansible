@@ -11,3 +11,5 @@
       - gcc-toolset-9
       - gcc-gfortran
       - cmake
+      - python2-devel
+      - python36-devel
