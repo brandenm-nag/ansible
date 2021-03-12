@@ -1,27 +1,17 @@
 ---
 
-- name: Install 3Proxy
+- name: Install Squid
   yum:
     name:
-      - 3proxy
+      - squid
 
-- name: Configure 3Proxy
-  copy:
-    dest: /etc/3proxy.cfg
-    content: |
-      daemon
-      allow * 10.0.0.0/8 * 80 HTTP
-      auth none
-      proxy
-      internal 0.0.0.0
-
-- name: enable 3Proxy
+- name: enable Squid
   service:
-    name: 3proxy
+    name: squid
     state: started
     enabled: yes
 
-- name: Set 3Proxy Env var
+- name: Set Proxy Env var
   copy:
     dest: /etc/profile.d/98-proxy.sh
     content: "export http_proxy=http://{{ mgmt_hostname }}:3128"
