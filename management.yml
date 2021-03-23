@@ -69,6 +69,7 @@
     - packages
     - devtoolset
     - mpi
+    - spack_compute
     - sos
     - debug_tools
     - lmod
