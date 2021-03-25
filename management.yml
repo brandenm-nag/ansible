@@ -113,7 +113,3 @@
         - boto3
         - pexpect
       virtualenv:  /opt/cloud_sdk
-  - name: Sync Cluster with DB
-    command: /mnt/shared/sbin/run_command sync
-  - name: Inform Service Node
-    command: /mnt/shared/bin/update_service_db cluster --status r
