@@ -4,6 +4,7 @@
     name:
       - PyYAML
       - git+https://github.com/brandenm-nag/python-citc.git@c398_master
+      - crcmod
     virtualenv: /opt/cloud_sdk
     virtualenv_command: "{{ python_venv }}"
   register: cloud_sdk_venv
