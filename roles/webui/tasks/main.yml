@@ -3,10 +3,16 @@
 - name: install nginx
   include_role:
     name: nginxinc.nginx
+
+- name: configure nginx
+  include_role:
+    name: nginxinc.nginx_config
   vars:
-    nginx_configure: true  # TODO Use nginxinc.nginx_config role instead (https://github.com/nginxinc/ansible-role-nginx-config)
-    nginx_http_template_enable: true
-    nginx_http_template:
+    nginx_config_cleanup: true
+    nginx_config_cleanup_files:
+      - /etc/nginx/conf.d/default.conf
+    nginx_config_http_template_enable: true
+    nginx_config_http_template:
       default:
         template_file: http/default.conf.j2
         conf_file_name: webui.conf
@@ -52,6 +58,7 @@
             servers: []
             # Should be able to replace custom_options with servers below
             # See https://github.com/nginxinc/ansible-role-nginx/issues/232
+            # This still breaks. Wait until 0.4 of https://github.com/nginxinc/ansible-role-nginx-config
             #servers:
             #  gunicorn:
             #    address: unix:/run/gunicorn.sock
@@ -83,6 +90,10 @@
     groups:
       - usermgmt
 
+- name: ensure git is installed
+  package:
+    name: git
+
 - name: checkout webui
   git:
     repo: git://github.com/clusterinthecloud/webui.git
@@ -90,18 +101,24 @@
     dest: "{{ webui_dir }}"
     version: master
   notify: reload gunicorn
+  tags:
+    - molecule-idempotence-notest  # The checkout get changed by the next tasks
 
 - name: set django to production mode
   lineinfile:
     path: "{{ webui_dir }}/webui/settings.py"
     regexp: '^IN_PRODUCTION = '
     line: IN_PRODUCTION = True
+  tags:
+    - molecule-idempotence-notest  # The file has been reset by the checkout
 
 - name: set secret key
   lineinfile:
     path: "{{ webui_dir }}/webui/settings.py"
     regexp: '^SECRET_KEY'
-    line: SECRET_KEY = r"{{ lookup('password', '/etc/citc/webuisecretkeyfile chars=ascii_letters,digits,punctuation length=50') }}"
+    line: SECRET_KEY = r"{{ lookup('password', webui_password_store_directory+'/webuisecretkeyfile chars=ascii_letters,digits,punctuation length=50') }}"
+  tags:
+    - molecule-idempotence-notest  # The file has been reset by the checkout
 
 - name: install webui dependencies
   pip:
@@ -114,6 +131,13 @@
     chdir: "{{ webui_dir }}"
   register: collectstatic_result
   changed_when: '"0 static files copied to" not in collectstatic_result.stdout'
+
+# TODO move this (and other copies of it) to a central role
+- name: create citc config dir
+  file:
+    path: /etc/citc
+    state: directory
+    mode: 0755
 
 - name: create webui mysql config
   template:
@@ -150,13 +174,10 @@
   register: createsuperuser_result
   changed_when: '"Creating user" in createsuperuser_result.stdout'
 
-- name: create get_secrets script
-  copy:
-    dest: /usr/sbin/get_secrets
-    content: |
-      #! /bin/bash
-      echo webui "{{ webui_superuser_password }}"
-    mode: 0700
+- name: add webui password to secrets
+  lineinfile:
+    path: /usr/sbin/get_secrets
+    line: echo webui "{{ webui_superuser_password }}"
 
 - name: create webui config file
   template:
@@ -186,6 +207,16 @@
     state: started
     enabled: yes
     daemon_reexec: yes
+
+- name: install firewalld
+  package:
+    name: firewalld
+    state: present
+
+- name: install python-firewall
+  package:
+    name: python3-firewall
+    state: present
 
 - name: open HTTP port in firewall
   firewalld:

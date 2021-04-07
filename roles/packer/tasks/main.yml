@@ -4,7 +4,7 @@
 
 - name: Download and unarchive Packer.
   unarchive:
-    src: https://releases.hashicorp.com/packer/1.6.0/packer_1.6.0_linux_amd64.zip
+    src: https://releases.hashicorp.com/packer/1.7.0/packer_1.7.0_linux_amd64.zip
     dest: /usr/local/bin
     remote_src: true
     creates: /usr/local/bin/packer
@@ -27,10 +27,27 @@
     dest: /etc/citc/packer/all.pkr.hcl
     mode: u=rw,g=r,o=r
 
+- name: create citc config dir
+  file:
+    path: /etc/citc
+    state: directory
+    mode: 0755
+
+- name: copy startnode.yaml
+  copy:
+    src: /tmp/startnode.yaml
+    dest: /etc/citc/startnode.yaml
+    remote_src: yes
+    mode: 0744
+
 - name: load the startnode config
-  include_vars:
-    file: /etc/citc/startnode.yaml
-    name: startnode_config
+  slurp:
+    src: /etc/citc/startnode.yaml
+  register: startnode_config_data
+
+- name: set the startnode_config fact
+  set_fact:
+    startnode_config: "{{ startnode_config_data['content'] | b64decode | from_yaml }}"
 
 - name: copy in packer ansible run script
   template:
@@ -48,6 +65,14 @@
     group: citc
     mode: u=rw,g=rw,o=
 
+- name: copy in EESSI install script
+  copy:
+    src: install_cvmfs_eessi.sh
+    dest: /home/citc/install_cvmfs_eessi.sh
+    owner: citc
+    group: citc
+    mode: u=rw,g=rw,o=
+
 - name: copy in config
   template:
     src: variables.pkrvars.hcl.j2
@@ -60,9 +85,12 @@
     dest: /usr/local/bin/run-packer
     mode: u=rwx,g=rx,o=rx
 
+# Ansible will not wait for this task until it gets to the `finalise` role
 - name: run packer to build first image
-  command: /usr/local/bin/run-packer
+  command: /usr/local/bin/run-packer  # noqa no-changed-when
   register: packer_result
-  changed_when: "packer_result.rc == 0"
-  failed_when: "packer_result.rc != 0"
-  tags: packer
+  async: 1000
+  poll: 0
+  tags:
+    - packer
+    - molecule-notest
