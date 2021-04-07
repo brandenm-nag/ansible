@@ -63,6 +63,7 @@
   roles:
     - finalise
     - apps
+    - monitoring
     - clustershell
     - packages
     - devtoolset
