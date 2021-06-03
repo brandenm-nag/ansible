@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple, List
 import oci  # type: ignore
 import yaml
 
-__all__ = ["get_nodespace", "start_node"]
+__all__ = ["get_nodespace", "start_node", "start_nodes"]
 
 
 def load_yaml(filename: str) -> dict:
@@ -154,6 +154,14 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
 
     log.info(f"{host}:  Started")
     return instance
+
+
+async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    await asyncio.gather(*(
+        start_node( log, host, nodespace, ssh_keys)
+        for host in hosts
+    ))
+
 
 def terminate_instance(log, hosts):
 

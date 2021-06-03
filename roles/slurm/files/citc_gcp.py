@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import asyncio
 
-__all__ = ["get_nodespace", "start_node"]
+__all__ = ["get_nodespace", "start_node", "start_nodes"]
 
 
 def load_yaml(filename: str) -> dict:
@@ -24,6 +24,33 @@ def get_nodespace(file="/etc/citc/startnode.yaml") -> Dict[str, str]:
     This will be static for all nodes in this cluster
     """
     return load_yaml(file)
+
+
+def create_placement_group(gce_compute, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}'
+    result = gce_compute.resourcePolicies().insert(
+                region=nodespace["region"],
+                project=nodespace["compartment_id"],
+                body={
+                    'name': name,
+                    'groupPlacementPolicy': {
+                        # Max size, via doc: 
+                        # https://cloud.google.com/compute/docs/instances/define-instance-placement#restrictions
+                        "vmCount": 22,
+                        "collocation": "COLLOCATED"
+                    }
+                }).execute()
+    return result['targetLink'] if 'targetLink' in result else None
+
+    
+def get_placement_group(gce_compute, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}'
+    result = gce_compute.resourcePolicies().list(
+                region=nodespace["region"],
+                project=nodespace["compartment_id"],
+                filter=f'name={name}').execute()
+    return result['items'][0]['selfLink'] if 'items' in result else None
+
 
 
 def get_node(gce_compute, log, compartment_id: str, zone: str, hostname: str, cluster_id: str) -> Dict:
@@ -61,18 +88,22 @@ def get_ip_for_vm(gce_compute, log, compartment_id: str, zone: str, hostname: st
     ip = network.get('networkIP', None)
     return ip
 
+def get_node_features(hostname):
+    features = subprocess.run(
+        ["sinfo", "--Format=features:200", "--noheader", f"--nodes={hostname}"],
+        stdout=subprocess.PIPE
+    ).stdout.decode().strip().split(',')
+    features = {f.split("=")[0]: f.split("=")[1] for f in features}
+    return features
 
-def get_shape(hostname):
-    features = subprocess.run(["sinfo", "--Format=features:200", "--noheader", f"--nodes={hostname}"], stdout=subprocess.PIPE).stdout.decode().split(',')
-    shape = [f for f in features if f.startswith("shape=")][0].split("=")[1].strip()
-    return shape
 
 
 def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace: Dict[str, str], ssh_keys: str):
     """
     Create the configuration needed to create ``hostname`` in ``nodespace`` with ``ssh_keys``
     """
-    shape = get_shape(hostname)
+    features = get_node_features(hostname)
+    shape = features["shape"]
     subnet = nodespace["subnet"]
     zone = nodespace["zone"]
     image_family = f'citc-slurm-compute-{nodespace["cluster_id"]}'
@@ -128,6 +159,18 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     # the correct one (if set)
     if machine_type.startswith('n1-') or machine_type.startswith('e2-'):
         config['minCpuPlatform'] = 'Intel Skylake'
+
+    if features["pg"] == 'True':
+        PG = get_placement_group(gce_compute, features["shape"], nodespace)
+        if not PG:
+            PG = create_placement_group(gce_compute, features["shape"], nodespace)
+        config["resourcePolicies"] = [ PG ]
+        # Required when using compact placement
+        config["scheduling"] = {
+            "onHostMaintenance": "TERMINATE",
+            "automaticRestart": False
+        }
+
 
     return config
 
@@ -217,6 +260,13 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     return instance
 
 
+async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    await asyncio.gather(*(
+        start_node( log, host, nodespace, ssh_keys)
+        for host in hosts
+    ))
+
+
 def terminate_instance(log, hosts, nodespace=None):
     gce_compute = get_build()
 
@@ -240,7 +290,6 @@ def terminate_instance(log, hosts, nodespace=None):
             continue
 
     log.info(f" Stopped {host}")
-
 
 # [START run]
 async def do_create_instance():
