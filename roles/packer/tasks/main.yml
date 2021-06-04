@@ -40,18 +40,18 @@
     mode: u=rwx,g=,o=
 
 - name: copy in packer kernel-update
-  file:
+  copy:
     src: update_kernel.sh
     dest: /etc/citc/packer/update_kernel.sh
     owner: root
-    mode: u=rwx,g=,o=
+    mode: u=rwx,g=rx,o=rx
 
 - name: copy in packer gvnic builder
-  file:
+  copy:
     src: update_kernel.sh
     dest: /etc/citc/packer/install_gvnic.sh
     owner: root
-    mode: u=rwx,g=,o=
+    mode: u=rwx,g=rx,o=rx
 
 - name: copy in packer extra run script template (no force overwrite)
   copy:
