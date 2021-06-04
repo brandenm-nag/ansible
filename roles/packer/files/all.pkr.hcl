@@ -148,7 +148,7 @@ build {
         script = "/etc/citc/packer/update_kernel.sh"
         expect_disconnect = true
     }
-    provision "shell" {
+    provisioner "shell" {
         pause_before = "20s"
         script = "/etc/citc/packer/install_gvnic.sh"
         environment_vars = [
