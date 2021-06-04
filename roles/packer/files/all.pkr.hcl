@@ -1,4 +1,3 @@
-variable "google_source_image_family" {}
 variable "google_account_file" {}
 variable "google_destination_image_family" {}
 variable "google_project_id" {}
@@ -24,7 +23,7 @@ variable "ca_cert" {}
 
 source "googlecompute" "google" {
     account_file = var.google_account_file
-    source_image_family = var.google_source_image_family
+    source_image = "${var.destination_image_name}-${var.cluster}-v1"
     ssh_username = "centos"
     project_id = var.google_project_id
     zone = var.google_zone
@@ -144,6 +143,18 @@ build {
         "source.oracle-oci.oracle",
         "source.oracle-oci.oracle-gpu",
     ]
+
+    provisioner "shell" {
+        script = "/etc/citc/packer/update_kernel.sh"
+        expect_disconnect = true
+    }
+    provision "shell" {
+        pause_before = "20s"
+        script = "/etc/citc/packer/install_gvnic.sh"
+        environment_vars = [
+            "PACKER_SOURCE_NAME=${source.name}",
+            ]
+    }
 
     provisioner "file" {
         source = "/home/citc/.ssh/authorized_keys"

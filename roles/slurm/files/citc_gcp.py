@@ -132,6 +132,7 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
         'networkInterfaces': [
             {
                 'subnetwork': subnet,
+                'nicType': "GVNIC",
                 'addressType': 'INTERNAL',  # Can't find this in the docs...
                 'networkIP': ip,
                 'accessConfigs': [
@@ -171,6 +172,10 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
             "automaticRestart": False
         }
 
+    if should_use_tier_1_networking(machine_type):
+        config["networkPerformanceConfigs"] = {
+            "totalEgressBandwidthTier": "TIER_1"
+        }
 
     return config
 
