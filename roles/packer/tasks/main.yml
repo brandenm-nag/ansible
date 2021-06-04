@@ -48,7 +48,7 @@
 
 - name: copy in packer gvnic builder
   copy:
-    src: update_kernel.sh
+    src: install_gvnic.sh
     dest: /etc/citc/packer/install_gvnic.sh
     owner: root
     mode: u=rwx,g=rx,o=rx
