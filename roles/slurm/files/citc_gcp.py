@@ -96,6 +96,14 @@ def get_node_features(hostname):
     features = {f.split("=")[0]: f.split("=")[1] for f in features}
     return features
 
+def should_use_tier_1_networking(machine_type):
+    mach_info = machine_type.split('-')
+    if mach_info[0] == "c2" and int(mach_info[2]) >= 30:
+        return True
+    if mach_info[0] == "n2" and int(mach_info[2]) >= 32:
+        return True
+    return False
+    
 
 
 def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace: Dict[str, str], ssh_keys: str):
