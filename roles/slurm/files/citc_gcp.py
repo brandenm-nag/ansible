@@ -63,7 +63,7 @@ def create_placement_group(log, gce_compute, vmCount, shape, nodespace):
                         # Max size, via doc: 
                         # https://cloud.google.com/compute/docs/instances/define-instance-placement#restrictions
                         "vmCount": vmCount,
-                        "collocation": "COLLOCATED"
+                        "collocation": "CLUSTERED"
                     }
                 }).execute()
 
@@ -209,10 +209,10 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     # Only 'n1' instances really should specify minimum CPU type
     # Other instances only have a single CPU type, and require you pick
     # the correct one (if set)
-    if machine_type.startswith('n1-') or machine_type.startswith('e2-'):
+    if shape.startswith('n1-') or shape.startswith('e2-'):
         config['minCpuPlatform'] = 'Intel Skylake'
 
-    if should_use_tier_1_networking(machine_type):
+    if should_use_tier_1_networking(shape):
         config["networkPerformanceConfigs"] = {
             "totalEgressBandwidthTier": "TIER_1"
         }
@@ -268,6 +268,7 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     ip, _dns_ip, slurm_ip = get_ip(host)
 
     instance_details = create_node_config(gce_compute, host, ip, nodespace, ssh_keys)
+    log.debug(f"Host Config: {instance_details}")
 
     loop = asyncio.get_event_loop()
 
@@ -325,7 +326,7 @@ async def start_node_group(log, hosts, nodespace: Dict[str, str], ssh_keys: str)
     log.info(f"Starting {len(hosts)} hosts in a group {hosts}")
     features = get_node_features(hosts[0])
 
-    BATCH_SIZE = 22 # Currently, same as max placement group size
+    BATCH_SIZE = 100 # Currently, same as max placement group size
 
 
     batches = []
