@@ -242,7 +242,7 @@ def get_credentials():
 def get_build():
     credentials = get_credentials()
 
-    compute = googleapiclient.discovery.build('compute', 'v1', credentials=credentials, cache_discovery=False)
+    compute = googleapiclient.discovery.build('compute', 'beta', credentials=credentials, cache_discovery=False)
 
     return compute
 
