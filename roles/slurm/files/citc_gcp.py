@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 import subprocess
 import time
 from typing import Dict, Optional, Tuple
@@ -26,9 +27,34 @@ def get_nodespace(file="/etc/citc/startnode.yaml") -> Dict[str, str]:
     return load_yaml(file)
 
 
-def create_placement_group(gce_compute, shape, nodespace):
-    name=f'pg-{nodespace["cluster_id"]}-{shape}'
-    result = gce_compute.resourcePolicies().insert(
+def wait_for_operation(gce_compute, project, operation):
+    result = None
+    while True:
+        if 'zone' in operation:
+            result = gce_compute.zoneOperations().get(
+                        project=project,
+                        zone=operation['zone'].split('/')[-1],
+                        operation=operation['name']).execute()
+        elif 'region' in operation:
+            result = gce_compute.regionOperations().get(
+                        project=project,
+                        region=operation['region'].split('/')[-1],
+                        operation=operation['name']).execute()
+        else:
+            result = gce_compute.globalOperations().get(
+                        project=project,
+                        operation=operation['name']).execute()
+        if result['status'] == 'DONE':
+            if 'error' in result:
+                raise Exception(result['error'])
+            return result
+        time.sleep(1)
+
+
+def create_placement_group(log, gce_compute, vmCount, shape, nodespace):
+    name=f'pg-{nodespace["cluster_id"]}-{shape}-{vmCount}-{int(time.time()*100000)}'
+    log.info(f"Creating placement group '{name}' of size {vmCount}")
+    operation = gce_compute.resourcePolicies().insert(
                 region=nodespace["region"],
                 project=nodespace["compartment_id"],
                 body={
@@ -36,21 +62,38 @@ def create_placement_group(gce_compute, shape, nodespace):
                     'groupPlacementPolicy': {
                         # Max size, via doc: 
                         # https://cloud.google.com/compute/docs/instances/define-instance-placement#restrictions
-                        "vmCount": 22,
+                        "vmCount": vmCount,
                         "collocation": "COLLOCATED"
                     }
                 }).execute()
-    return result['targetLink'] if 'targetLink' in result else None
 
-    
-def get_placement_group(gce_compute, shape, nodespace):
-    name=f'pg-{nodespace["cluster_id"]}-{shape}'
-    result = gce_compute.resourcePolicies().list(
-                region=nodespace["region"],
-                project=nodespace["compartment_id"],
-                filter=f'name={name}').execute()
-    return result['items'][0]['selfLink'] if 'items' in result else None
+    url = operation['targetLink'] if 'targetLink' in operation else None
+    wait_for_operation(gce_compute, nodespace["compartment_id"], operation)
+    return url
 
+def delete_placement_group(log, gce_compute, region, project, name):
+    log.info(f"Attempting delete placement group '{name}'")
+    try:
+        operation = gce_compute.resourcePolicies().delete(
+                region=region,
+                project=project,
+                resourcePolicy=name).execute()
+    except googleapiclient.errors.HttpError as e:
+        log.info(f"Unable to delete placement group '{name}': {e}")
+        # Note, for deleting placement groups, we're not going to care if it has an error or not
+        # We can't trivially check in advance to see how many instances may be connected to it
+        pass
+
+def list_placement_groups(log, gce_compute, region, project, cluster_id):
+    op = gce_compute.resourcePolicies().list(
+            project=project, region=region,
+            filter=f'name = "pg-{cluster_id}-*"')
+    results = op.execute()
+    if 'items' in results:
+        groups = [x['name'] for x in results['items']]
+        log.info(f"Found Groups: {groups}")
+        return groups
+    return []
 
 
 def get_node(gce_compute, log, compartment_id: str, zone: str, hostname: str, cluster_id: str) -> Dict:
@@ -169,17 +212,6 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     if machine_type.startswith('n1-') or machine_type.startswith('e2-'):
         config['minCpuPlatform'] = 'Intel Skylake'
 
-    if features["pg"] == 'True':
-        PG = get_placement_group(gce_compute, features["shape"], nodespace)
-        if not PG:
-            PG = create_placement_group(gce_compute, features["shape"], nodespace)
-        config["resourcePolicies"] = [ PG ]
-        # Required when using compact placement
-        config["scheduling"] = {
-            "onHostMaintenance": "TERMINATE",
-            "automaticRestart": False
-        }
-
     if should_use_tier_1_networking(machine_type):
         config["networkPerformanceConfigs"] = {
             "totalEgressBandwidthTier": "TIER_1"
@@ -273,10 +305,105 @@ async def start_node(log, host: str, nodespace: Dict[str, str], ssh_keys: str) -
     return instance
 
 
+def add_instance_cb(request_id, response, exception):
+    if exception is not None:
+        log.error(f"Exception while starting node {request_id}: {exception}")
+
+
+
+async def start_node_group(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    project = nodespace["compartment_id"]
+    zone = nodespace["zone"]
+    region = nodespace["region"]
+    cluster_id = nodespace["cluster_id"]
+    gce_compute = get_build()
+
+    if len(hosts) == 1:
+        await start_node(log, hosts[0], nodespace, ssh_keys)
+        return
+
+    log.info(f"Starting {len(hosts)} hosts in a group {hosts}")
+    features = get_node_features(hosts[0])
+
+    BATCH_SIZE = 22 # Currently, same as max placement group size
+
+
+    batches = []
+    curr_batch_size = 0
+    placement_group = None
+    for host in hosts:
+        if curr_batch_size == 0:
+            num_processed = BATCH_SIZE * len(batches)
+            placement_group = create_placement_group(log, gce_compute, min(len(hosts)-num_processed, BATCH_SIZE), features["shape"], nodespace) if features["pg"] == 'True' else None
+            batches.append(gce_compute.new_batch_http_request(callback=add_instance_cb))
+
+        ip, _dns_ip, slurm_ip = get_ip(host)
+        instance_details = create_node_config(gce_compute, host, ip, nodespace, ssh_keys)
+
+        if placement_group:
+            instance_details["resourcePolicies"] = [ placement_group ]
+            # Required when using compact placement
+            instance_details["scheduling"] = {
+                "onHostMaintenance": "TERMINATE",
+                "automaticRestart": False
+            }
+
+
+        batches[-1].add(gce_compute.instances().insert(project=project, zone=zone, body=instance_details), request_id=host)
+        curr_batch_size += 1
+        if curr_batch_size >= BATCH_SIZE:
+            curr_batch_size = 0 # Will cause a new batch to be added next loop
+
+    # Start up the nodes
+    first_batch = True
+    for batch in batches:
+        if not first_batch:
+            await asyncio.sleep(30) # Delay ... is this necessary?
+
+        try:
+            batch.execute()
+        except Exception as e:
+            log.error(f" problem launching batched instances {e}")
+            return
+
+    if not slurm_ip:
+        for host in hosts:
+            while not get_node(gce_compute, log, project, zone, host, nodespace["cluster_id"])['networkInterfaces'][0].get("networkIP"):
+                log.info(f"{host}:  No VNIC attachment yet. Waiting...")
+                await asyncio.sleep(5)
+            vm_ip = get_ip_for_vm(gce_compute, log, project, zone, host, nodespace["cluster_id"])
+
+            log.info(f"  Private IP {vm_ip}")
+
+            subprocess.run(["scontrol", "update", f"NodeName={host}", f"NodeAddr={vm_ip}"])
+
+
+
 async def start_nodes(log, hosts, nodespace: Dict[str, str], ssh_keys: str) -> None:
+    project = nodespace["compartment_id"]
+    zone = nodespace["zone"]
+    region = nodespace["region"]
+    cluster_id = nodespace["cluster_id"]
+    gce_compute = get_build()
+
+    # Wait for nodes that may currently be deleting
+    for host in hosts:
+        while get_node_state(gce_compute, log, project, zone, host, nodespace["cluster_id"]) in ["STOPPING", "TERMINATED"]:
+            log.info(" host is currently being deleted. Waiting...")
+            await asyncio.sleep(5)
+
+    # Filter out nodes that are in bringup or running already
+    hosts = [h for h in hosts if get_node_state(gce_compute, log, project, zone, h, nodespace["cluster_id"]) is None]
+
+    # group nodes based off of shape
+    groups = defaultdict(lambda: [])
+    for host in hosts:
+        shape = get_node_features(host)["shape"]
+        groups[shape].append(host)
+
     await asyncio.gather(*(
-        start_node( log, host, nodespace, ssh_keys)
-        for host in hosts
+        start_node_group( log, group, nodespace, ssh_keys)
+        for group in groups.values()
     ))
 
 
@@ -289,20 +416,37 @@ def terminate_instance(log, hosts, nodespace=None):
     project = nodespace["compartment_id"]
     zone = nodespace["zone"]
 
+    clean_placement_groups = False
+    requests = []
     for host in hosts:
         log.info(f"Stopping {host}")
+        features = get_node_features(host)
+        if features["pg"] == 'True':
+            clean_placement_groups = True
 
         try:
-            response = gce_compute.instances() \
+            requests.append(gce_compute.instances() \
                 .delete(project=project,
                         zone=zone,
                         instance=host) \
-                .execute()
+                .execute())
         except Exception as e:
             log.error(f" problem while stopping: {e}")
             continue
 
-    log.info(f" Stopped {host}")
+
+    if clean_placement_groups:
+        # Wait for nodes to terminate
+        activePGs = list_placement_groups(log, gce_compute, nodespace["region"], project, nodespace["cluster_id"])
+        if len(activePGs):
+            for host in hosts:
+                while get_node_state(gce_compute, log, project, zone, host, nodespace["cluster_id"]) in ["STOPPING", "TERMINATED"]:
+                    log.info(f"    {host} is currently being deleted. Waiting...")
+                    time.sleep(2)
+                log.info(f"    {host} has stopped")
+        for pg in activePGs:
+            delete_placement_group(log, gce_compute, nodespace["region"], project, pg)
+
 
 # [START run]
 async def do_create_instance():
