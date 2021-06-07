@@ -68,7 +68,6 @@
     - devtoolset
     - mpi
     - spack_compute
-    - sos
     - debug_tools
     - lmod
     - instance_limits
