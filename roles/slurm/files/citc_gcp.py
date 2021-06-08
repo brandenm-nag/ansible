@@ -213,7 +213,7 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
         config['minCpuPlatform'] = 'Intel Skylake'
 
     if should_use_tier_1_networking(shape):
-        config["networkPerformanceConfigs"] = {
+        config["networkPerformanceConfig"] = {
             "totalEgressBandwidthTier": "TIER_1"
         }
 
