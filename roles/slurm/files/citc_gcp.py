@@ -24,7 +24,7 @@ def get_nodespace(file="/etc/citc/startnode.yaml") -> Dict[str, str]:
     Get the information about the space into which we were creating nodes
     This will be static for all nodes in this cluster
     """
-    return load_yaml(file)
+    base = load_yaml(file)
 
 
 def wait_for_operation(gce_compute, project, operation):
@@ -157,6 +157,7 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     shape = features["shape"]
     subnet = nodespace["subnet"]
     zone = nodespace["zone"]
+    adv_net = nodespace.get("use_advanced_networking", False)
     image_family = f'citc-slurm-compute-{nodespace["cluster_id"]}'
 
     with open("/home/slurm/bootstrap.sh", "rb") as f:
@@ -183,7 +184,7 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
         'networkInterfaces': [
             {
                 'subnetwork': subnet,
-                'nicType': "GVNIC",
+                'nicType': "GVNIC" if adv_net else "VIRTIO_NET",
                 'addressType': 'INTERNAL',  # Can't find this in the docs...
                 'networkIP': ip,
                 'accessConfigs': [
@@ -212,7 +213,7 @@ def create_node_config(gce_compute, hostname: str, ip: Optional[str], nodespace:
     if shape.startswith('n1-') or shape.startswith('e2-'):
         config['minCpuPlatform'] = 'Intel Skylake'
 
-    if should_use_tier_1_networking(shape):
+    if adv_net and should_use_tier_1_networking(shape):
         config["networkPerformanceConfig"] = {
             "totalEgressBandwidthTier": "TIER_1"
         }
