@@ -55,13 +55,12 @@
     enabled: yes
     state: started
 
-- name: Add Slurm repository
-  yum_repository:
-    name: slurm
-    description: Slurm
-    baseurl: https://download.opensuse.org/repositories/home:/Milliams:/citc/EPEL_8_CentOS/
-    gpgcheck: yes
-    gpgkey: https://download.opensuse.org/repositories/home:/Milliams:/citc/EPEL_8_CentOS/repodata/repomd.xml.key
+- name: Enable Epel for Slurm
+  yum:
+    name: epel-release
+    state: latest
+    become: True
+
 
 - name: create slurm group
   group:
