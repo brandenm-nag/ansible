@@ -59,7 +59,6 @@
   yum:
     name: epel-release
     state: latest
-    become: True
 
 
 - name: create slurm group
