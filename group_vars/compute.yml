@@ -2,7 +2,7 @@
 slurm_packages:
   - slurmd
   - devel
-  - libpmi
+  - pmi
 
 slurm_role: compute
 

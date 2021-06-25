@@ -85,7 +85,7 @@
 - name: install Slurm-parts
   yum:
     enablerepo: powertools
-    name: slurm-{{ item }}-{{ slurm_version }}*
+    name: slurm-{{ item }}
     state: present
   loop: "{{ slurm_packages }}"
 

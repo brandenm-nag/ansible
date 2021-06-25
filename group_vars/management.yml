@@ -3,9 +3,10 @@
 slurm_accounting_db_password: "{{ lookup('password', '/tmp/slurmpasswordfile chars=ascii_letters,digits,hexdigits') }}"
 
 slurm_packages:
+  - devel
   - slurmctld
   - slurmdbd
-  - libpmi
+  - pmi
 
 slurm_role: mgmt
 
