@@ -55,13 +55,11 @@
     enabled: yes
     state: started
 
-- name: Add Slurm repository
-  yum_repository:
-    name: slurm
-    description: Slurm
-    baseurl: https://download.opensuse.org/repositories/home:/Milliams:/citc/EPEL_8_CentOS/
-    gpgcheck: yes
-    gpgkey: https://download.opensuse.org/repositories/home:/Milliams:/citc/EPEL_8_CentOS/repodata/repomd.xml.key
+- name: Enable Epel for Slurm
+  yum:
+    name: epel-release
+    state: latest
+
 
 - name: create slurm group
   group:
@@ -80,7 +78,14 @@
 
 - name: install Slurm
   yum:
-    name: slurm-{{ item }}-{{ slurm_version }}*
+    enablerepo: powertools
+    name: slurm
+    state: present
+
+- name: install Slurm-parts
+  yum:
+    enablerepo: powertools
+    name: slurm-{{ item }}
     state: present
   loop: "{{ slurm_packages }}"
 
@@ -124,7 +129,7 @@
     dest: /etc/slurm/slurmdbd.conf
     owner: slurm
     group: slurm
-    mode: 0400
+    mode: 0600
   when: slurm_role == "mgmt"
   notify:
     - restart slurmdbd

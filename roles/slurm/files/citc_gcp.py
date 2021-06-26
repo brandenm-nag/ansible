@@ -24,7 +24,7 @@ def get_nodespace(file="/etc/citc/startnode.yaml") -> Dict[str, str]:
     Get the information about the space into which we were creating nodes
     This will be static for all nodes in this cluster
     """
-    base = load_yaml(file)
+    return load_yaml(file)
 
 
 def wait_for_operation(gce_compute, project, operation):
