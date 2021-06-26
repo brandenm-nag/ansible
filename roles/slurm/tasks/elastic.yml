@@ -1,9 +1,14 @@
 ---
+- name: prepare python-citc
+  copy:
+    src: python-citc
+    dest: /tmp/pip-build
+
 - name: install common tools
   pip:
     name:
       - PyYAML
-      - git+https://github.com/brandenm-nag/python-citc.git@c398_master
+      - file:///tmp/pip-build/python-citc
       - crcmod
     virtualenv: /opt/cloud_sdk
     virtualenv_command: "{{ python_venv }}"
