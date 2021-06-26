@@ -62,7 +62,6 @@
   tags: finalise
   roles:
     - finalise
-    - apps
     - clustershell
     - packages
     - devtoolset
