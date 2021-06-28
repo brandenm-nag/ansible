@@ -4,6 +4,6 @@
   package:
     name: "{{ mpi_packages[ansible_local.citc.csp] }}"
 
-- include_tasks: efa.yml
-  when:
-    ansible_local.citc.csp == "aws"
+#- include_tasks: efa.yml
+#  when:
+#    ansible_local.citc.csp == "aws"
