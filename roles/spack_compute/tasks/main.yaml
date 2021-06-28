@@ -11,36 +11,36 @@
 
 
 # spack config add packages:libfabric:externals:/opt/amazon/efa/
-- name: Detect Libfabric version
-  shell: "/opt/amazon/efa/bin/fi_info --version | awk '/libfabric:/{print $2}'"
-  register: spack_libfabric_version
-  when:
-    ansible_local.citc.csp == "aws"
-
-- name: Register EFA Libfabric with Spack
-  copy:
-    content: |
-      packages:
-        libfabric:
-          externals:
-          - spec: libfabric@{{spack_libfabric_version.stdout}}
-            prefix: /opt/amazon/efa
-          buildable: false
-    dest: /tmp/libfabric.yaml
-  when:
-     ansible_local.citc.csp == "aws"
- 
-- name: Spack note EFA Libfabric - import
-  command: /mnt/shared/spack/bin/spack config --scope system add -f /tmp/libfabric.yaml
-  when:
-     ansible_local.citc.csp == "aws"
-
-- name: Spack note EFA Libfabric - delete
-  file:
-    path: /tmp/libfabric.yaml
-    state: absent
-  when:
-     ansible_local.citc.csp == "aws"
+#- name: Detect Libfabric version
+#  shell: "/opt/amazon/efa/bin/fi_info --version | awk '/libfabric:/{print $2}'"
+#  register: spack_libfabric_version
+#  when:
+#    ansible_local.citc.csp == "aws"
+#
+#- name: Register EFA Libfabric with Spack
+#  copy:
+#    content: |
+#      packages:
+#        libfabric:
+#          externals:
+#          - spec: libfabric@{{spack_libfabric_version.stdout}}
+#            prefix: /opt/amazon/efa
+#          buildable: false
+#    dest: /tmp/libfabric.yaml
+#  when:
+#     ansible_local.citc.csp == "aws"
+# 
+#- name: Spack note EFA Libfabric - import
+#  command: /mnt/shared/spack/bin/spack config --scope system add -f /tmp/libfabric.yaml
+#  when:
+#     ansible_local.citc.csp == "aws"
+#
+#- name: Spack note EFA Libfabric - delete
+#  file:
+#    path: /tmp/libfabric.yaml
+#    state: absent
+#  when:
+#     ansible_local.citc.csp == "aws"
 # spack build OpenMPI:  openmpi +pmi schedulers=slurm +legacylaunchers fabrics=ofi arch={{ansible_architecture}}
 
 - name: Spack mark cmake as buildable
@@ -69,10 +69,12 @@
   become_user: citc
 
 - name: Set OpenMPI default options
-  command: /mnt/shared/spack/bin/spack config --scope system add packages:openmpi:variants:'+pmi +legacylaunchers schedulers=slurm fabrics={{"ofi" if ansible_local.citc.csp == "aws" else "auto"}}'
+#  command: /mnt/shared/spack/bin/spack config --scope system add packages:openmpi:variants:'+pmi +legacylaunchers schedulers=slurm fabrics={{"ofi" if ansible_local.citc.csp == "aws" else "auto"}}'
+  command: /mnt/shared/spack/bin/spack config --scope system add packages:openmpi:variants:'+pmi +legacylaunchers schedulers=slurm fabrics=auto'
 
 - name: Set MPICH default options
-  command: /mnt/shared/spack/bin/spack config --scope system add packages:mpich:variants:'+slurm netmod={{"ofi" if ansible_local.citc.csp == "aws" else "tcp"}}'
+  #command: /mnt/shared/spack/bin/spack config --scope system add packages:mpich:variants:'+slurm netmod={{"ofi" if ansible_local.citc.csp == "aws" else "tcp"}}'
+  command: /mnt/shared/spack/bin/spack config --scope system add packages:mpich:variants:'+slurm netmod=tcp'
 
 
 
