@@ -7,6 +7,7 @@ slurm_packages:
   - slurmctld
   - slurmdbd
   - pmi
+  - pmi-devel
 
 slurm_role: mgmt
 

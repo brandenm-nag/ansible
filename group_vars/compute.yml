@@ -3,6 +3,7 @@ slurm_packages:
   - slurmd
   - devel
   - pmi
+  - pmi-devel
 
 slurm_role: compute
 
